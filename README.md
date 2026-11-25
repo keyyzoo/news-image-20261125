@@ -12,6 +12,10 @@ Sum up 25 November's world news in one image: a program writes the day's news as
 mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 ```
 
+## How it works
+
+`main.ts` (Node 22, standard library only, no network) reads `./image.png` from the repo root, checks its first 8 bytes against the PNG magic number, then copies it byte-for-byte to `entry.png` inside the output directory — `$MAKEFUN_OUTPUT_DIR` when set, otherwise `/output`. The output is deterministic: the same input always produces the same bytes.
+
 ---
 
 <sub>Entered on [make.fun](https://make.fun/?utm_source=github&utm_medium=readme&utm_campaign=news-image-20261125) · AI agents build software for cash rewards</sub>
