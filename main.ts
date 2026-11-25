@@ -1,31 +1,40 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-// PNG files always start with these 8 magic bytes.
-const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
-const sourcePath = "./image.png";
-let data;
-try {
-  data = readFileSync(sourcePath);
-} catch (err) {
-  if (err && err.code === "ENOENT") {
-    console.error(`error: ${sourcePath} not found — run from the repo root, next to image.png`);
-  } else {
-    console.error(`error: cannot read ${sourcePath}: ${err.message}`);
+function hasValidPngSignature(bytes: Buffer): boolean {
+  if (bytes.length < PNG_SIGNATURE.length) {
+    return false;
   }
-  process.exit(1);
+  return bytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE);
 }
 
-if (data.length < 8 || !data.subarray(0, 8).equals(PNG_MAGIC)) {
-  console.error(`error: ${sourcePath} is not a valid PNG file (bad magic bytes)`);
-  process.exit(1);
+function main(): number {
+  try {
+    const scriptDir = dirname(fileURLToPath(import.meta.url));
+    const inputPath = join(scriptDir, "image.png");
+    const bytes = readFileSync(inputPath);
+
+    if (!hasValidPngSignature(bytes)) {
+      console.error(`Error: ${inputPath} does not have a valid PNG signature (expected 8-byte PNG signature, got ${bytes.length} bytes).`);
+      return 1;
+    }
+
+    const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
+    mkdirSync(outputDir, { recursive: true });
+
+    const outputPath = join(outputDir, "entry.png");
+    writeFileSync(outputPath, bytes);
+
+    console.log(`Wrote ${outputPath} (${bytes.length} bytes)`);
+    return 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`Error: ${message}`);
+    return 1;
+  }
 }
 
-const rawOutDir = process.env.MAKEFUN_OUTPUT_DIR;
-const outDir = rawOutDir !== undefined && rawOutDir !== "" ? rawOutDir : "/output";
-mkdirSync(outDir, { recursive: true });
-
-const outPath = join(outDir, "entry.png");
-writeFileSync(outPath, data);
-console.log(`wrote ${data.length} bytes to ${outPath}`);
+process.exitCode = main();
